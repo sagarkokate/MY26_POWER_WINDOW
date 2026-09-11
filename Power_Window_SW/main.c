@@ -97,8 +97,7 @@ int main(void)
 
     // Enable GPIO Port F Peripheral
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
-    while (!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOF))
-        ;
+    while (!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOF));
 
     // Configure LED pins (PF1 = Red, PF2 = Blue, PF3 = Green) as Outputs
     GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3);
