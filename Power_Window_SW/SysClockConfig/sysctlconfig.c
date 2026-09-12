@@ -22,46 +22,48 @@
 #include "sysctlconfig.h"
 
 /************************************************MACROS*******************************************/
-#define SYSCTL_SYSDIV_1 0x00U
-#define SYSCTL_SYSDIV_2 0x01U
-#define SYSCTL_SYSDIV_3 0x02U
-#define SYSCTL_SYSDIV_4 0x03U
-#define SYSCTL_SYSDIV_5 0x04U
-#define SYSCTL_SYSDIV_6 0x05U
-#define SYSCTL_SYSDIV_7 0x06U
-#define SYSCTL_SYSDIV_8 0x07U
-#define SYSCTL_SYSDIV_9 0x08U
-#define SYSCTL_SYSDIV_10 0x09U
-#define SYSCTL_SYSDIV_11 0x0AU
-#define SYSCTL_SYSDIV_12 0x0BU
-#define SYSCTL_SYSDIV_13 0x0CU
-#define SYSCTL_SYSDIV_14 0x0DU
-#define SYSCTL_SYSDIV_15 0x0EU
-#define SYSCTL_SYSDIV_16 0x0FU
-#define BYPASS (11U)
-#define PWRDN (13U)
-#define OSCSRC (4U)
-#define PIOSC_DIV_BY_4 (2U)
-#define USESYSDIV (22U)
-#define SYSDIV (23U)
-#define PLLLMIS (0x6U)
-#define PLLLRIS (0x6U)
-#define MOSCDIS (0u)
-#define TRUE (1U)
-#define FALSE (0U)
+#define SYSCTL_SYSDIV_1                 0x00U
+#define SYSCTL_SYSDIV_2                 0x01U
+#define SYSCTL_SYSDIV_3                 0x02U
+#define SYSCTL_SYSDIV_2_5               0x02U
+#define SYSCTL_SYSDIV_4                 0x03U
+#define SYSCTL_SYSDIV_5                 0x04U
+#define SYSCTL_SYSDIV_6                 0x05U
+#define SYSCTL_SYSDIV_7                 0x06U
+#define SYSCTL_SYSDIV_8                 0x07U
+#define SYSCTL_SYSDIV_9                 0x08U
+#define SYSCTL_SYSDIV_10                0x09U
+#define SYSCTL_SYSDIV_11                0x0AU
+#define SYSCTL_SYSDIV_12                0x0BU
+#define SYSCTL_SYSDIV_13                0x0CU
+#define SYSCTL_SYSDIV_14                0x0DU
+#define SYSCTL_SYSDIV_15                0x0EU
+#define SYSCTL_SYSDIV_16                0x0FU
+#define BYPASS                          (11U)
+#define PWRDN                           (13U)
+#define OSCSRC                          (4U)
+#define PIOSC_DIV_BY_4                  (2U)
+#define USESYSDIV                       (22U)
+#define SYSDIV                          (23U)
+#define PLLLMIS                         (0x6U)
+#define PLLLRIS                         (0x6U)
+#define MOSCDIS                         (0u)
+#define USERCC2                         (31u)
+#define DIV400                          (30u)
+#define SYSDIV2LSB                      (22u)
+#define PWRDN2                          (13u)
+#define BYPASS2                         (11u)
+#define SYSDIV2                         (23u)
+
+
+#define MHZ_80                          (80u)
+#define TRUE                            (1U)
+#define FALSE                           (0U)
 
 /*********************************************MACROS_PARAM****************************************/
 
 /*********************************************Typedefs********************************************/
-typedef enum SysClockSrc
-{
-    PIOSC,          /* Precision Internal Oscillator */
-    PISOC_DIV_BY_4, /* PIOSC divided by 4 */
-    MOSC,           /* Main Oscillator */
-    LFIOSC,         /* Low Frequency Internal Oscillator */
-    HIB_MODULE_OSC, /* Hibernation Module Oscillator */
-    MAX_CLOCK_SRC   /* Max Number of Src Clock */
-} ClockSrc_t;
+
 
 #if 0
 typedef ClkPllConfig
@@ -86,16 +88,7 @@ typedef struct ClkSleepConfig
     McuModes_t McuMode;
 } ClkSleepConfig_t;
 
-typedef struct Sysctlconfig
-{
-    ClockSrc_t eClockSrc;  /* Clk Source */
-    uint32_t Clkfreq;      /* Desired Clk Frequency */
-    bool IsPllUsed;        /* Is PLL required to System Clk */
-    bool TypeOfOscillator; /* Internal or External Oscillator */
-    bool Calibration;      /* Calibration is required */
-    uint8_t CrystalVal;    /* Crystal Value for configuration */
-    bool IsRunning;        /* Is the CLock is Running */
-} Sysctlconfig_t;
+
 
 /***********************************************Export Object*************************************/
 const Sysctlconfig_t g_sSysClkConfig[MAX_CLOCK_SRC] =
@@ -112,7 +105,7 @@ static Sysctlconfig_t s_GlobalClockConfig;
 /*****************************************Export Functions**********************************/
 
 /*******************************************************************************************/
-uint8_t SysCtlClockConfig(ClockSrc_t eClockSource, uint8_t Is_PLLReq)
+uint8_t SysCtlClockConfig(ClockSrc_t eClockSource, uint8_t Is_PLLReq,uint8_t DsrcClk)
 {
     uint8_t retval = E_NOT_OK;
 
@@ -136,7 +129,7 @@ uint8_t SysCtlClockConfig(ClockSrc_t eClockSource, uint8_t Is_PLLReq)
             case LFIOSC:
             case HIB_MODULE_OSC:
             {
-                retval = ClkConfig(Ptr_clkConfig, Is_PLLReq);
+                retval = ClkConfig(Ptr_clkConfig, Is_PLLReq,DsrcClk);
                 break;
             }
             default:
@@ -170,65 +163,87 @@ uint8_t SysCtlClockConfig(ClockSrc_t eClockSource, uint8_t Is_PLLReq)
  * 
  * 
  ****************************************************************************************************/
-uint8_t ClkConfig(Sysctlconfig_t *ClkPtr, uint8_t Is_PLLReq)
+uint8_t ClkConfig(Sysctlconfig_t *ClkPtr, uint8_t Is_PLLReq,uint8_t DsrcClk)
 {
     uint8_t RetVal = E_OK;
     uint32_t u32_RCCreg = 0x00U;
-    uint32_t u32_RCC2reg = 0x00u;
+    uint32_t u32_RCC2reg = 0x00U;
     uint32_t u32_legacyTime = 65535U;
 
-    /* Read back the Current Clk Configuration */
+    /* Read back current clock configurations */
     u32_RCCreg = RCC_REG;
     u32_RCC2reg = RCC2_REG;
 
-    /* Bypass the PLL and SysDiv and Supply Raw Clk */
-    u32_RCCreg |= (1 << BYPASS);
-    u32_RCCreg &= ~(1 << USESYSDIV);
+    if (MHZ_80 == DsrcClk)
+    {
+        /* Enable RCC2 override */
+        u32_RCC2reg |= (1U << USERCC2);
 
-    /* Select the Oscillator Source */
-    u32_RCCreg &= ((uint32_t)~((1 << 4u) | (1 << 5u)));
-    u32_RCCreg |= (((ClkPtr->eClockSrc) & 0x3u) << OSCSRC);
+        /* Set BYPASS2 and clear USESYSDIV during setup */
+        u32_RCC2reg |= (1U << BYPASS2);
+        u32_RCCreg &= ~(1U << USESYSDIV);
 
-    /* Load the RCC value */
-    RCC_REG = u32_RCCreg;
+        /* Select Oscillator Source in RCC2 (Bits 6:4) */
+        u32_RCC2reg &= ~((1U << 4U) | (1U << 5U) | (1U << 6U));
+        u32_RCC2reg |= (((uint32_t)(ClkPtr->eClockSrc) & 0x07U) << OSCSRC);
+
+        /* Commit updates to physical registers */
+        RCC_REG = u32_RCCreg;
+        RCC2_REG = u32_RCC2reg;
+    }
+    else
+    {
+        /* Standard RCC Setup: Set BYPASS and clear USESYSDIV */
+        u32_RCCreg |= (1U << BYPASS);
+        u32_RCCreg &= ~(1U << USESYSDIV);
+
+        /* Select Oscillator Source in RCC (Bits 5:4) */
+        u32_RCCreg &= ~((1U << 4U) | (1U << 5U));
+        u32_RCCreg |= (((uint32_t)(ClkPtr->eClockSrc) & 0x03U) << OSCSRC);
+
+        /* Load RCC register */
+        RCC_REG = u32_RCCreg;
+    }
 
     switch(ClkPtr->eClockSrc)
     {
         case MOSC:
         case PIOSC:
         {
-            if(MOSC = ClkPtr->eClockSrc)
+            if (MOSC == ClkPtr->eClockSrc)
             {
-                /* Enable the Main Osc if its disabled */
-                RCC_REG &= ((uint32_t)~(1<<MOSCDIS));
+                /* Enable Main Osc */
+                RCC_REG &= ~(1U << MOSCDIS);
+
+                /* Clear and set 16 MHz XTAL value (0x15) */
+                RCC_REG &= ~(0x1FU << 6U);
+                RCC_REG |= (0x15U << 6U);
             }
 
-            /* Clears the crystal bits */
-            RCC_REG &= (uint32_t)(~(0x1Fu << 6u));
-
-            /* Configure the Crystal Frequency Range 2 - 16 MHz */
-            RCC_REG |= (uint32_t)(0x15u << 6u);
-
-            if(TRUE == Is_PLLReq)
+            if (TRUE == Is_PLLReq)
             {
-                /* Clear the PLLRIS Bit */
-                MISC_REG |= (1 << PLLLMIS);
-
-                /* Check the PLL Status */
-                while (!((RIS_REG >> PLLLRIS) & 0x01))
+                /* Ensure PLL is powered ON (Clear PWRDN/PWRDN2 bits) */
+                if (MHZ_80 == DsrcClk)
                 {
-                    /* Wait for Tready time for PLL */
-                    u32_legacyTime--;
+                    RCC2_REG &= ~(1U << PWRDN2);
+                }
+                else
+                {
+                    RCC_REG &= ~(1U << PWRDN);
+                }
 
+                /* Clear PLL Lock Raw Interrupt Flag (Direct W1C) */
+                MISC_REG = (1U << PLLLMIS);
+
+                /* Poll for PLL Lock */
+                while (!((RIS_REG >> PLLLRIS) & 0x01U))
+                {
+                    u32_legacyTime--;
                     if (0U == u32_legacyTime)
                     {
                         break;
                     }
                 }
-            }
-            else
-            {
-
             }
             break;
         }
@@ -236,35 +251,53 @@ uint8_t ClkConfig(Sysctlconfig_t *ClkPtr, uint8_t Is_PLLReq)
         case LFIOSC:
         case HIB_MODULE_OSC:
         {
-            /* Enable SystemClock Divider */
-            RCC_REG &= (uint32_t)(~(1 << USESYSDIV));
-
-            /* Clears the SYSDIV Bits */
-            RCC_REG &= (uint32_t)(~(0xFu << SYSDIV));
-
-            #if 0
-            /* Use SysDiv to generate 50 Mhz */
-            RCC_REG |= (SYSCTL_SYSDIV_4 << SYSDIV);
-            #endif
-
+            RCC_REG &= ~(1U << USESYSDIV);
+            RCC_REG &= ~(0x0FU << SYSDIV);
+            break;
+        }
+        default:
+        {
+            RetVal = E_NOT_OK;
             break;
         }
     }
-    
-    if (u32_legacyTime) // Tready time as per the Datasheet
+
+    /* Step 3: Apply system dividers and remove PLL bypass if lock succeeded */
+    if (u32_legacyTime != 0U)
     {
-        if (Is_PLLReq)
+        if (TRUE == Is_PLLReq)
         {
-            /* Enable SystemClock Divider */
-            RCC_REG |= (1 << USESYSDIV);
+            if (MHZ_80 == DsrcClk)
+            {
+                /* Enable 400 MHz PLL output mode */
+                RCC2_REG |= (1U << DIV400);
 
-            RCC_REG &= (uint32_t)(~(0xFu << SYSDIV));
+                /* Clear full 7-bit SYSDIV2 field (bits 28:22) */
+                RCC2_REG &= ~(0x7FU << SYSDIV2);
 
-            /* Use SysDiv to generate 50 Mhz */
-            RCC_REG |= (SYSCTL_SYSDIV_4 << SYSDIV);
+                /* Set Divisor for 80 MHz (SYSCTL_SYSDIV_2_5 = 0x02U) */
+                RCC2_REG |= (SYSCTL_SYSDIV_2_5 << SYSDIV2);
 
-            /* Disable the BYPASS Bit */
-            RCC_REG &= ~(1 << BYPASS);
+                /* Enable System Clock Divider in RCC */
+                RCC_REG |= (1U << USESYSDIV);
+
+                /* Unbypass PLL2 */
+                RCC2_REG &= ~(1U << BYPASS2);
+            }
+            else
+            {
+                /* Enable System Clock Divider */
+                RCC_REG |= (1U << USESYSDIV);
+
+                /* Clear 4-bit SYSDIV field (bits 26:23) */
+                RCC_REG &= ~(0x0FU << SYSDIV);
+
+                /* Set 50 MHz Divider */
+                RCC_REG |= (SYSCTL_SYSDIV_4 << SYSDIV);
+
+                /* Unbypass PLL */
+                RCC_REG &= ~(1U << BYPASS);
+            }
         }
         RetVal = E_OK;
     }
@@ -272,8 +305,6 @@ uint8_t ClkConfig(Sysctlconfig_t *ClkPtr, uint8_t Is_PLLReq)
     {
         RetVal = E_NOT_OK;
     }
-
-    /* Update the Global Clock ConfigTree */
 
     return RetVal;
 }

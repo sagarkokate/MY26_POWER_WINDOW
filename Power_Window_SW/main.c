@@ -9,6 +9,7 @@
 #include "driverlib/gpio.h"
 #include "inc/hw_gpio.h"
 #include "inc/tm4c123gh6pm.h"
+#include "sysctlconfig.h"
 
 #define MAX_BRIGHTNESS 10u
 
@@ -93,7 +94,8 @@ void Task_5ms(void *pvParameters)
 int main(void)
 {
     // Configure system clock to 80 MHz using PLL
-    SysCtlClockSet(SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ | SYSCTL_OSC_MAIN);
+   //SysCtlClockSet(SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ | SYSCTL_OSC_MAIN);
+    SysCtlClockConfig(MOSC,1u,80u);
 
     // Enable GPIO Port F Peripheral
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);

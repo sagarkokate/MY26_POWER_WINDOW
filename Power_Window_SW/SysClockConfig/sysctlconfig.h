@@ -49,13 +49,34 @@
 
 
 /*********************************************Typedef****************************************/
+typedef enum SysClockSrc
+{
+    PIOSC,          /* Precision Internal Oscillator */
+    PISOC_DIV_BY_4, /* PIOSC divided by 4 */
+    MOSC,           /* Main Oscillator */
+    LFIOSC,         /* Low Frequency Internal Oscillator */
+    HIB_MODULE_OSC, /* Hibernation Module Oscillator */
+    MAX_CLOCK_SRC   /* Max Number of Src Clock */
+} ClockSrc_t;
+
+typedef struct Sysctlconfig
+{
+    ClockSrc_t eClockSrc;  /* Clk Source */
+    uint32_t Clkfreq;      /* Desired Clk Frequency */
+    bool IsPllUsed;        /* Is PLL required to System Clk */
+    bool TypeOfOscillator; /* Internal or External Oscillator */
+    bool Calibration;      /* Calibration is required */
+    uint8_t CrystalVal;    /* Crystal Value for configuration */
+    bool IsRunning;        /* Is the CLock is Running */
+} Sysctlconfig_t;
+
 typedef enum SysClockSrc ClockSrc_t;
 typedef struct Sysctlconfig Sysctlconfig_t;
 
 /***********************************************Export Object*************************************/
 extern Sysctlconfig_t * GetCurrentClockConfigSettings(Sysctlconfig_t *g_sSysClkConfig);
-extern uint8_t ClkConfig(Sysctlconfig_t *ClkPtr, uint8_t Is_PLLReq);
-extern uint8_t SysCtlClockConfig(ClockSrc_t eClockSource, uint8_t Is_PLLReq);
+extern uint8_t ClkConfig(Sysctlconfig_t *ClkPtr, uint8_t Is_PLLReq,uint8_t DsrcClk);
+extern uint8_t SysCtlClockConfig(ClockSrc_t eClockSource, uint8_t Is_PLLReq,uint8_t DsrcClk);
 /*************************************************************************************************/
 
 
